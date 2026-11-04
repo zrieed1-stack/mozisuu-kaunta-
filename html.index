@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="文章の文字数をリアルタイムで数える無料ツール。空白を除いた文字数、原稿用紙の枚数、読了時間も確認できます。">
+  <title>文字数カウンター｜無料・ブラウザでかんたん計測</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #202a36;
+      --muted: #697586;
+      --line: #dce3ec;
+      --blue: #1769e0;
+      --pale: #f3f7fc;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--pale);
+      color: var(--ink);
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      line-height: 1.7;
+    }
+    main {
+      width: min(900px, calc(100% - 32px));
+      margin: 48px auto;
+    }
+    h1 { margin: 0 0 8px; font-size: clamp(1.7rem, 4vw, 2.4rem); }
+    .lead { margin: 0 0 24px; color: var(--muted); }
+    .card {
+      padding: clamp(18px, 4vw, 32px);
+      background: white;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      box-shadow: 0 8px 28px #1c35500a;
+    }
+    textarea {
+      display: block;
+      width: 100%;
+      min-height: 260px;
+      padding: 16px;
+      resize: vertical;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      font: inherit;
+      font-size: 1rem;
+      line-height: 1.8;
+    }
+    textarea:focus { outline: 3px solid #1769e033; border-color: var(--blue); }
+    .actions { display: flex; gap: 10px; margin: 12px 0 20px; }
+    button {
+      padding: 9px 16px;
+      border: 0;
+      border-radius: 9px;
+      background: var(--blue);
+      color: white;
+      font: inherit;
+      font-weight: 650;
+      cursor: pointer;
+    }
+    button.secondary { background: #e9eef5; color: var(--ink); }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px;
+    }
+    .stat { padding: 14px; border-radius: 12px; background: var(--pale); }
+    .stat span { display: block; color: var(--muted); font-size: .88rem; }
+    .stat strong { font-size: 1.45rem; font-variant-numeric: tabular-nums; }
+    section { margin-top: 28px; }
+    h2 { font-size: 1.2rem; }
+    .note { color: var(--muted); font-size: .92rem; }
+    footer { margin: 24px 0; color: var(--muted); font-size: .85rem; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>文字数カウンター</h1>
+    <p class="lead">文章を入力すると、文字数・行数・原稿用紙の枚数をすぐに数えます。</p>
+
+    <div class="card">
+      <label for="text">数えたい文章</label>
+      <textarea id="text" placeholder="ここに文章を入力、または貼り付けてください。"></textarea>
+
+      <div class="actions">
+        <button id="copy" type="button">文章をコピー</button>
+        <button id="clear" class="secondary" type="button">クリア</button>
+      </div>
+
+      <div class="stats" aria-live="polite">
+        <div class="stat"><span>文字数（空白込み）</span><strong id="all">0</strong></div>
+        <div class="stat"><span>文字数（空白除く）</span><strong id="trimmed">0</strong></div>
+        <div class="stat"><span>改行を除く文字数</span><strong id="noNewline">0</strong></div>
+        <div class="stat"><span>単語数（英語など）</span><strong id="words">0</strong></div>
+        <div class="stat"><span>行数</span><strong id="lines">0</strong></div>
+        <div class="stat"><span>400字詰め原稿用紙</span><strong id="pages">0</strong></div>
+        <div class="stat"><span>読了時間の目安</span><strong id="minutes">0分</strong></div>
+      </div>
+      <p class="note">文字数は絵文字なども画面上の文字単位で数えます。読了時間は1分あたり500文字として計算します。</p>
+    </div>
+
+    <section>
+      <h2>使い方</h2>
+      <p>文章を入力欄に貼り付けるだけで、文字数などを自動で計算します。入力内容はこのページ内で処理され、サーバーには送信されません。</p>
+    </section>
+
+    <footer>無料で使える文字数カウンター</footer>
+  </main>
+
+  <script>
+    const input = document.querySelector("#text");
+    const $ = (id) => document.getElementById(id);
+    const fmt = (n) => n.toLocaleString("ja-JP");
+
+    function count() {
+      const text = input.value;
+      const chars = [...text];
+      const withoutWhitespace = text.replace(/\s/g, "");
+      const withoutNewlines = text.replace(/[\r\n]/g, "");
+      const words = text.trim().match(/\b[\p{L}\p{N}]+\b/gu) || [];
+      const lines = text.length === 0 ? 0 : text.split(/\r\n|\r|\n/).length;
+      const countForPages = [...withoutNewlines].length;
+
+      $("all").textContent = fmt(chars.length);
+      $("trimmed").textContent = fmt([...withoutWhitespace].length);
+      $("noNewline").textContent = fmt([...withoutNewlines].length);
+      $("words").textContent = fmt(words.length);
+      $("lines").textContent = fmt(lines);
+      $("pages").textContent = fmt(countForPages === 0 ? 0 : Math.ceil(countForPages / 400));
+      $("minutes").textContent = `${Math.max(1, Math.ceil(chars.length / 500))}分`;
+      if (chars.length === 0) $("minutes").textContent = "0分";
+    }
+
+    input.addEventListener("input", count);
+    $("clear").addEventListener("click", () => {
+      input.value = "";
+      count();
+      input.focus();
+    });
+    $("copy").addEventListener("click", async () => {
+      if (!input.value) return;
+      try {
+        await navigator.clipboard.writeText(input.value);
+        $("copy").textContent = "コピーしました";
+        setTimeout(() => $("copy").textContent = "文章をコピー", 1400);
+      } catch {
+        input.select();
+        document.execCommand("copy");
+      }
+    });
+  </script>
+</body>
+</html>
